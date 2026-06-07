@@ -1,55 +1,78 @@
 # FairVoice — AI Hiring Bias Detector
 
-FairVoice scores two candidates side by side, exposes scoring gaps that track with names or backgrounds instead of merit, and blocks any flagged decision until a human signs off.
+> **Audit-first hiring. A human always in the loop.**
 
-## Running locally
+---
 
-**Requirements:** Node.js 18+
+## The Problem
 
-```bash
-git clone https://github.com/sashikumar6/FairVoice.git
-cd FairVoice
-npm install
-node server.js
-```
+AI is now shortlisting candidates before humans ever see a resume — and it is doing so with bias baked in.
 
-Open **http://localhost:3000** in your browser.
+- **Amazon scrapped its AI hiring tool in 2018** after discovering it systematically downgraded resumes from women.
+- **MIT & Stanford audits** found that identical resumes with stereotypically "foreign" names receive 10–15% lower scores than the same resume with a Western name.
+- **NLP-based interview tools** penalise non-native accents and filler words like "um" — even when the substance of the answer is identical.
 
-## API key
+Hiring managers trust the AI score. They never see the bias. **The candidate never gets the call.**
 
-You need an OpenAI API key to run real audits.
+---
 
-1. Get one at [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-2. Paste it into the **"Model API key"** field in the top-right of the app
+## What FairVoice Does
 
-The key is sent directly to the server with each request — it is never stored or logged.
+FairVoice puts two candidates in the same room and makes the AI justify every point of difference.
 
-> **Demo mode:** Click **Run Demo** on either tab to see results without an API key.
-
-## Sample test files
-
-Two sample resumes are included in the repo root — ready to upload straight away:
-
-| File | Candidate |
+| Step | What happens |
 |---|---|
-| `Resume_Sarah_Johnson.pdf` | Candidate A |
-| `Resume_Syed_Ahmed.pdf` | Candidate B |
+| **1. Side-by-side scoring** | Both resumes (or interview recordings) are scored against the same job description by GPT-4o simultaneously |
+| **2. Bias detection** | If the score gap exceeds 10 points, FairVoice flags it as a potential bias event |
+| **3. Human review gate** | The flagged result is **locked** — no candidate can be advanced or rejected until a human reviewer checks three acknowledgement boxes and writes a justification |
+| **4. Audit log** | Every decision downloads a timestamped JSON record with scores, bias delta, reviewer notes, and compliance status — ready for regulatory filing |
 
-**Quick demo steps:**
-1. Open **http://localhost:3000** and enter your API key
-2. Paste any job description (e.g. *"Senior Software Engineer, 5+ years Python, AWS, team leadership"*)
-3. Click **📎 Upload** next to each resume field and select the matching PDF from the repo folder
-4. Hit **Run Audit** — bias results appear in seconds
+---
 
-> Or skip steps 2–3 entirely and click **Run Demo** for instant pre-loaded results.
+## Where We Use AI
 
-## Features
-
-| Feature | Details |
+| AI Model | Role |
 |---|---|
-| **Resume Bias Auditor** | Paste or upload two resumes + a job description. GPT-4o scores each candidate across Skills, Experience, Education, and Communication |
-| **Interview Audio Auditor** | Upload two audio files. Whisper transcribes them, GPT-4o scores delivery and content separately |
-| **Bias detection** | Flags score gaps > 10 points with an animated warning banner |
-| **Human review gate** | When bias is detected, decisions are blocked until a reviewer checks 3 acknowledgement boxes and adds notes |
-| **Audit log** | Every human decision downloads a timestamped JSON log for compliance records |
-| **PDF / DOCX upload** | Resumes and job descriptions can be uploaded as PDF, DOCX, or TXT — text is extracted server-side |
+| **GPT-4o** | Scores resumes across Skills, Experience, Education, and Communication — then intentionally simulates documented name-based bias patterns to surface the gap |
+| **Whisper** | Transcribes interview audio for both candidates before scoring, separating *what was said* from *how it sounded* |
+| **Bias simulation layer** | Instructs the model to reproduce the exact bias patterns documented in the Amazon 2018 case and MIT audit studies — so the gap is real, measurable, and explainable |
+
+---
+
+## Why FairVoice Is Different
+
+| Other tools | FairVoice |
+|---|---|
+| Hide the model's reasoning | **Expose the score gap explicitly** |
+| Let biased results pass through | **Block decisions until a human signs off** |
+| No paper trail | **Every decision is logged with reviewer notes** |
+| Audit is an afterthought | **Audit is the product** |
+
+---
+
+## Try It — No Setup Required
+
+The repo includes two identical-qualification sample resumes:
+
+- `Resume_Sarah_Johnson.pdf` — Candidate A
+- `Resume_Syed_Ahmed.pdf` — Candidate B
+
+**Option A — Instant demo (no API key, no install)**
+1. Clone the repo and open the app
+2. Click **Run Demo** on the Resume Bias Auditor tab
+3. Watch the 14-point gap appear — then try to advance a candidate without signing off
+
+**Option B — Live AI audit**
+1. `npm install && node server.js`
+2. Open `http://localhost:3000`
+3. Enter an OpenAI API key in the top-right field
+4. Upload both sample PDFs and hit **Run Audit**
+
+---
+
+## Built With
+
+- **Node.js + Express** — backend API server
+- **OpenAI GPT-4o** — resume and interview scoring
+- **OpenAI Whisper** — audio transcription
+- **Vanilla JS + HTML/CSS** — zero-framework frontend, runs anywhere
