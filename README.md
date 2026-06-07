@@ -26,6 +26,23 @@ The key is sent directly to the server with each request — it is never stored 
 
 > **Demo mode:** Click **Run Demo** on either tab to see results without an API key.
 
+## Sample test files
+
+Two sample resumes are included in the repo root — ready to upload straight away:
+
+| File | Candidate |
+|---|---|
+| `Resume_Sarah_Johnson.pdf` | Candidate A |
+| `Resume_Syed_Ahmed.pdf` | Candidate B |
+
+**Quick demo steps:**
+1. Open **http://localhost:3000** and enter your API key
+2. Paste any job description (e.g. *"Senior Software Engineer, 5+ years Python, AWS, team leadership"*)
+3. Click **📎 Upload** next to each resume field and select the matching PDF from the repo folder
+4. Hit **Run Audit** — bias results appear in seconds
+
+> Or skip steps 2–3 entirely and click **Run Demo** for instant pre-loaded results.
+
 ## Features
 
 | Feature | Details |
