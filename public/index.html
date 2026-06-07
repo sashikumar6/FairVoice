@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FairVoice — AI Bias Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid #e2e8f0;
+      backdrop-filter: blur(12px);
+    }
+    .header-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #3b82f6, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-name {
+      font-size: 1.1rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      background: linear-gradient(135deg, #3b82f6, #06b6d4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-sub {
+      font-size: 0.7rem;
+      color: #94a3b8;
+      margin-top: -2px;
+      letter-spacing: 0.03em;
+    }
+    .api-key-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0 12px;
+      min-width: 240px;
+      height: 38px;
+    }
+    .api-key-wrap svg { flex-shrink: 0; color: #94a3b8; }
+    .api-key-wrap input {
+      background: none;
+      border: none;
+      outline: none;
+      font-family: inherit;
+      font-size: 0.82rem;
+      color: #0f172a;
+      width: 100%;
+    }
+    .api-key-wrap input::placeholder { color: #94a3b8; }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 80px 32px 72px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 0.78rem;
+      color: #64748b;
+      font-weight: 500;
+      margin-bottom: 28px;
+    }
+    .hero-badge svg { color: #3b82f6; }
+    .hero-title {
+      font-size: clamp(2.4rem, 5vw, 3.6rem);
+      font-weight: 900;
+      line-height: 1.1;
+      color: #0f172a;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+    }
+    .hero-title .accent {
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 1rem;
+      color: #64748b;
+      line-height: 1.7;
+      max-width: 560px;
+      margin: 0 auto 36px;
+    }
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-hero {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-hero:hover { background: linear-gradient(135deg, #60a5fa, #3b82f6); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(59,130,246,0.3); }
+    .btn-hero-outline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 11px 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-hero-outline:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+    /* ── Audit section ── */
+    .audit-section {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 32px 80px;
+    }
+
+    /* ── Tab pills ── */
+    .tab-pills {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+    .tab-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 9px 18px;
+      border-radius: 999px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1.5px solid transparent;
+    }
+    .tab-pill.active {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border-color: transparent;
+      box-shadow: 0 2px 12px rgba(59,130,246,0.25);
+    }
+    .tab-pill.inactive {
+      background: white;
+      color: #64748b;
+      border-color: #e2e8f0;
+    }
+    .tab-pill.inactive:hover { border-color: #cbd5e1; color: #475569; }
+
+    /* ── Section header ── */
+    .section-eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: #3b82f6;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    .section-headline {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1.25;
+      margin-bottom: 10px;
+      letter-spacing: -0.01em;
+    }
+    .section-desc {
+      font-size: 0.9rem;
+      color: #64748b;
+      line-height: 1.65;
+      max-width: 560px;
+      margin-bottom: 32px;
+    }
+
+    /* ── Cards / panels ── */
+    .card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    /* ── Form ── */
+    .field-label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .field-label-a { color: #3b82f6; }
+    .field-label-b { color: #7c3aed; }
+
+    textarea {
+      width: 100%;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 0.875rem;
+      color: #0f172a;
+      outline: none;
+      resize: vertical;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      line-height: 1.6;
+    }
+    textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.1); }
+    textarea::placeholder { color: #94a3b8; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover:not(:disabled) { background: linear-gradient(135deg, #60a5fa, #3b82f6); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-outline {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: transparent;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 22px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: #cbd5e1; background: #f8fafc; }
+
+    .btn-danger-outline {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      flex: 1;
+      background: transparent; color: #dc2626; border: 1px solid #dc2626;
+      border-radius: 8px; padding: 10px 22px; font-size: 0.875rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-danger-outline:hover:not(:disabled) { background: rgba(220,38,38,0.05); }
+    .btn-danger-outline:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-advance {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      flex: 1;
+      background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border: none;
+      border-radius: 8px; padding: 10px 22px; font-size: 0.875rem; font-weight: 600;
+      font-family: inherit; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-advance:hover:not(:disabled) { background: linear-gradient(135deg, #60a5fa, #3b82f6); }
+    .btn-advance:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* ── File upload ── */
+    .file-drop {
+      position: relative;
+      border: 2px dashed #e2e8f0;
+      border-radius: 10px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      background: #f8fafc;
+      transition: all 0.2s;
+    }
+    .file-drop:hover { border-color: #3b82f6; background: #eff6ff; }
+    .file-drop.has-file { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.03); }
+    .file-drop input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .upload-icon {
+      width: 32px; height: 32px;
+      margin: 0 auto 8px;
+      color: #94a3b8;
+    }
+
+    /* ── Progress bar ── */
+    .progress-bg { background: #e2e8f0; border-radius: 999px; height: 7px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+
+    /* ── Score circle ── */
+    .score-circle {
+      width: 58px; height: 58px;
+      border-radius: 50%;
+      border: 2px solid;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    /* ── Bias banner ── */
+    .bias-banner {
+      background: linear-gradient(135deg, rgba(239,68,68,0.06), rgba(239,68,68,0.02));
+      border: 1px solid rgba(239,68,68,0.28);
+      border-radius: 12px;
+      animation: pulse-red 2.5s ease-in-out infinite;
+    }
+    @keyframes pulse-red {
+      0%,100% { border-color: rgba(239,68,68,0.28); box-shadow: none; }
+      50% { border-color: rgba(239,68,68,0.5); box-shadow: 0 0 16px rgba(239,68,68,0.07); }
+    }
+    .clear-banner {
+      background: rgba(34,197,94,0.05);
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 10px;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
+    }
+    .spinner-dark {
+      width: 20px; height: 20px;
+      border: 2px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error / status ── */
+    .error-box {
+      background: rgba(239,68,68,0.05);
+      border: 1px solid rgba(239,68,68,0.22);
+      border-radius: 8px; padding: 12px 16px;
+      color: #dc2626; font-size: 0.875rem;
+    }
+    .status-box {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+    .placeholder-box {
+      border: 1px dashed #e2e8f0;
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+    }
+
+    /* ── Review gate ── */
+    .review-gate { border-color: rgba(245,158,11,0.3) !important; }
+    .checkbox-row {
+      display: flex; align-items: flex-start; gap: 10px;
+      cursor: pointer; color: #475569;
+      font-size: 0.85rem; line-height: 1.5;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 17px; height: 17px; min-width: 17px;
+      accent-color: #3b82f6; cursor: pointer; margin-top: 2px;
+    }
+    .confirm-box {
+      background: rgba(34,197,94,0.07);
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 8px; padding: 10px 14px;
+      color: #16a34a; font-size: 0.82rem; margin-top: 14px;
+    }
+
+    /* ── Upload pill ── */
+    .upload-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #f1f5f9; border: 1px solid #e2e8f0;
+      border-radius: 6px; padding: 3px 10px;
+      font-size: 0.72rem; font-weight: 600; color: #64748b;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s;
+      text-transform: none; letter-spacing: 0; margin-bottom: 0;
+    }
+    .upload-pill:hover { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.05); }
+    .upload-pill.done { border-color: rgba(34,197,94,0.4); color: #16a34a; background: rgba(34,197,94,0.05); }
+
+    /* ── Tab content visibility ── */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Grid helpers ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 640px) { .grid-2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════════════════ HEADER ═══════════════════════ -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 12h3M19 12h3M5.636 5.636l2.122 2.122M16.243 16.243l2.121 2.121M5.636 18.364l2.122-2.121M16.243 7.757l2.121-2.121M12 2v3M12 19v3"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">FairVoice</div>
+          <div class="brand-sub">AI hiring bias detector</div>
+        </div>
+      </div>
+
+      <div class="api-key-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3"/>
+        </svg>
+        <input type="password" id="apiKey" placeholder="Model API key" />
+        <svg id="toggle-key" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="cursor:pointer;flex-shrink:0;">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════ HERO ═══════════════════════ -->
+  <section class="hero">
+    <div class="hero-badge">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      </svg>
+      Audit-first hiring, with a human always in the loop
+    </div>
+
+    <h1 class="hero-title">
+      Find the bias in<br/>
+      hiring <span class="accent">before it finds<br/>your candidates.</span>
+    </h1>
+
+    <p class="hero-sub">
+      FairVoice scores candidates side by side, isolates where the model disagrees
+      with the evidence, and refuses to let a flagged result turn into a decision
+      until a person signs off.
+    </p>
+
+    <div class="hero-ctas">
+      <button class="btn-hero" onclick="scrollToAudit()">
+        Start an audit
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </button>
+      <button class="btn-hero-outline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        No sign-off, no decision
+      </button>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ AUDIT ═══════════════════════ -->
+  <section class="audit-section" id="audit">
+
+    <!-- Tab pills -->
+    <div class="tab-pills">
+      <button class="tab-pill active" id="pill-resume" onclick="switchTab('resume')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+        Resume Bias Auditor
+      </button>
+      <button class="tab-pill inactive" id="pill-audio" onclick="switchTab('audio')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+        Interview Audio Auditor
+      </button>
+    </div>
+
+    <!-- ── RESUME TAB ── -->
+    <div id="tab-resume" class="tab-content active">
+      <div class="section-eyebrow">Resume Bias Auditor</div>
+      <h2 class="section-headline">Score two resumes for the same role —<br/>then expose the gap nobody can explain.</h2>
+      <p class="section-desc">
+        FairVoice grades each candidate dimension by dimension, lines them up side by side,
+        and flags scoring gaps that track with names or backgrounds instead of merit —
+        before a human ever sees a shortlist.
+      </p>
+
+      <!-- Job description -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <span class="field-label">Job description</span>
+          <label class="upload-pill">
+            <input type="file" accept=".pdf,.docx,.txt" style="display:none;" onchange="extractTextInto(this,'r-jobDesc','r-jd-badge')" />
+            <span id="r-jd-badge">📎 Upload file</span>
+          </label>
+        </div>
+        <textarea id="r-jobDesc" rows="4" placeholder="Paste the role description the candidates are being evaluated against…&#10;&#10;e.g. Senior Software Engineer — 5+ years Python, AWS, team leadership."></textarea>
+      </div>
+
+      <!-- Two resume columns -->
+      <div class="grid-2" style="margin-bottom:20px;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span class="field-label field-label-a">Resume — Candidate A</span>
+            <label class="upload-pill">
+              <input type="file" accept=".pdf,.docx,.txt" style="display:none;" onchange="extractTextInto(this,'r-resumeA','r-ra-badge')" />
+              <span id="r-ra-badge">📎 Upload</span>
+            </label>
+          </div>
+          <textarea id="r-resumeA" rows="9" placeholder="Paste resume text…&#10;&#10;Sarah Johnson&#10;sarah.johnson@email.com&#10;&#10;5 years Python, AWS, led teams of 8…"></textarea>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span class="field-label field-label-b">Resume — Candidate B</span>
+            <label class="upload-pill">
+              <input type="file" accept=".pdf,.docx,.txt" style="display:none;" onchange="extractTextInto(this,'r-resumeB','r-rb-badge')" />
+              <span id="r-rb-badge">📎 Upload</span>
+            </label>
+          </div>
+          <textarea id="r-resumeB" rows="9" placeholder="Paste resume text…&#10;&#10;Syed Ahmed&#10;syed.ahmed@email.com&#10;&#10;5 years Python, AWS, led teams of 8…"></textarea>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;margin-bottom:32px;">
+        <button class="btn-primary" id="r-run-btn" onclick="runResumeAudit()">
+          <span id="r-btn-label">Run Audit</span>
+          <span id="r-btn-spinner" style="display:none;"><span class="spinner"></span></span>
+        </button>
+        <button class="btn-outline" onclick="runResumeDemo()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Demo
+        </button>
+      </div>
+
+      <!-- Results -->
+      <div id="r-results">
+        <div class="placeholder-box">
+          <div style="font-size:2.2rem;margin-bottom:10px;">⚖️</div>
+          <p style="color:#94a3b8;font-size:0.9rem;">Run an audit to see bias analysis results</p>
+          <p style="color:#cbd5e1;font-size:0.78rem;margin-top:6px;">Both resumes scored against the job description via GPT-4o</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AUDIO TAB ── -->
+    <div id="tab-audio" class="tab-content">
+      <div class="section-eyebrow">Interview Audio Auditor</div>
+      <h2 class="section-headline">Transcribe two interviews and catch<br/>delivery bias hiding inside the score.</h2>
+      <p class="section-desc">
+        Upload both recordings and FairVoice separates what was said from how it sounded —
+        surfacing accent and fluency penalties that quietly sink qualified candidates.
+      </p>
+
+      <!-- Two upload columns -->
+      <div class="grid-2" style="margin-bottom:20px;">
+        <div>
+          <div class="field-label field-label-a" style="margin-bottom:8px;">Interview audio — Candidate A</div>
+          <div class="file-drop" id="a-drop-a">
+            <input type="file" id="a-fileA" accept="audio/*" onchange="onFileChange('a-fileA','a-label-a','a-drop-a')" />
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p id="a-label-a" style="color:#64748b;font-size:0.85rem;font-weight:500;">Click to upload audio</p>
+            <p style="color:#94a3b8;font-size:0.75rem;margin-top:4px;">MP3, WAV or M4A</p>
+          </div>
+        </div>
+        <div>
+          <div class="field-label field-label-b" style="margin-bottom:8px;">Interview audio — Candidate B</div>
+          <div class="file-drop" id="a-drop-b">
+            <input type="file" id="a-fileB" accept="audio/*" onchange="onFileChange('a-fileB','a-label-b','a-drop-b')" />
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p id="a-label-b" style="color:#64748b;font-size:0.85rem;font-weight:500;">Click to upload audio</p>
+            <p style="color:#94a3b8;font-size:0.75rem;margin-top:4px;">MP3, WAV or M4A</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;margin-bottom:28px;">
+        <button class="btn-primary" id="a-run-btn" onclick="runAudioAudit()">
+          <span id="a-btn-label">Run Audit</span>
+          <span id="a-btn-spinner" style="display:none;"><span class="spinner"></span></span>
+        </button>
+        <button class="btn-outline" onclick="runAudioDemo()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Run Demo
+        </button>
+      </div>
+
+      <!-- Transcript areas -->
+      <div class="grid-2" style="margin-bottom:32px;">
+        <div>
+          <div class="field-label field-label-a" style="margin-bottom:8px;">Transcript — Candidate A</div>
+          <textarea id="a-transcriptA" rows="5" placeholder="Transcript appears here after upload, or paste it manually…"></textarea>
+        </div>
+        <div>
+          <div class="field-label field-label-b" style="margin-bottom:8px;">Transcript — Candidate B</div>
+          <textarea id="a-transcriptB" rows="5" placeholder="Transcript appears here after upload, or paste it manually…"></textarea>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div id="a-results">
+        <div class="placeholder-box">
+          <div style="font-size:2.2rem;margin-bottom:10px;">🎙️</div>
+          <p style="color:#94a3b8;font-size:0.9rem;">Upload audio files and run audit</p>
+          <p style="color:#cbd5e1;font-size:0.78rem;margin-top:6px;">Transcribed via Whisper, scored via GPT-4o</p>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <script src="app.js"></script>
+  <script>
+    // API key toggle
+    document.getElementById('toggle-key').addEventListener('click', () => {
+      const inp = document.getElementById('apiKey');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    });
+
+    function scrollToAudit() {
+      document.getElementById('audit').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('pill-resume').className = tab === 'resume' ? 'tab-pill active' : 'tab-pill inactive';
+      document.getElementById('pill-audio').className  = tab === 'audio'  ? 'tab-pill active' : 'tab-pill inactive';
+    }
+  </script>
+</body>
+</html>

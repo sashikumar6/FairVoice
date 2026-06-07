@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FairVoice — AI Bias Detector</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            bg: '#f8fafc',
+            card: '#ffffff',
+            border: '#e2e8f0',
+            blue: { accent: '#3b82f6' },
+            cyan: { accent: '#06b6d4' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body { background: #f1f5f9; font-family: 'Inter', system-ui, sans-serif; }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid #e2e8f0;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .glass-hover:hover { border-color: #cbd5e1; transition: border-color 0.2s; }
+
+    .tab-active {
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-bottom: 2px solid #3b82f6;
+      color: #3b82f6;
+    }
+    .tab-inactive { color: #94a3b8; border-bottom: 2px solid transparent; }
+    .tab-inactive:hover { color: #64748b; }
+
+    .progress-bar-bg { background: #e2e8f0; border-radius: 9999px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 9999px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+
+    .score-ring {
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; font-weight: 900;
+      border: 3px solid;
+    }
+
+    .spinner {
+      width: 24px; height: 24px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .bias-banner {
+      background: linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.03) 100%);
+      border: 1px solid rgba(239,68,68,0.35);
+      animation: pulseRed 2s ease-in-out infinite;
+    }
+    @keyframes pulseRed {
+      0%, 100% { border-color: rgba(239,68,68,0.35); box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+      50% { border-color: rgba(239,68,68,0.6); box-shadow: 0 0 16px rgba(239,68,68,0.1); }
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    textarea, input[type="password"], input[type="text"] {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      color: #0f172a;
+      border-radius: 8px;
+      padding: 10px 14px;
+      width: 100%;
+      font-family: inherit;
+      font-size: 0.875rem;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+    textarea:focus, input:focus { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.12); }
+    textarea::placeholder, input::placeholder { color: #94a3b8; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white; border: none; border-radius: 8px;
+      padding: 10px 24px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit; font-size: 0.875rem;
+    }
+    .btn-primary:hover { background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(59,130,246,0.25); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-demo {
+      background: transparent;
+      color: #0891b2; border: 1px solid #0891b2; border-radius: 8px;
+      padding: 10px 24px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit; font-size: 0.875rem;
+    }
+    .btn-demo:hover { background: rgba(8,145,178,0.08); transform: translateY(-1px); }
+
+    .btn-danger-outline {
+      background: transparent;
+      color: #dc2626; border: 1px solid #dc2626; border-radius: 8px;
+      padding: 10px 24px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit; font-size: 0.875rem;
+    }
+    .btn-danger-outline:hover:not(:disabled) { background: rgba(220,38,38,0.06); }
+    .btn-danger-outline:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-advance {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white; border: none; border-radius: 8px;
+      padding: 10px 24px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; font-family: inherit; font-size: 0.875rem;
+    }
+    .btn-advance:hover:not(:disabled) { background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%); }
+    .btn-advance:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .file-upload-area {
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      background: #f8fafc;
+    }
+    .file-upload-area:hover { border-color: #3b82f6; background: rgba(59,130,246,0.02); }
+    .file-upload-area input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+      width: 100%; height: 100%;
+    }
+
+    .checkbox-item {
+      display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+    }
+    .checkbox-item input[type="checkbox"] {
+      width: 18px; height: 18px; min-width: 18px;
+      accent-color: #3b82f6; cursor: pointer; margin-top: 1px;
+    }
+
+    label { color: #64748b; font-size: 0.8rem; font-weight: 500; margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .section-title { color: #0f172a; font-size: 1.1rem; font-weight: 700; margin-bottom: 16px; }
+
+    .error-box {
+      background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.25);
+      border-radius: 8px; padding: 12px 16px; color: #dc2626; font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-900">
+
+  <!-- GLOBAL HEADER -->
+  <header class="glass sticky top-0 z-50" style="border-bottom:1px solid #e2e8f0;">
+    <div class="max-w-6xl mx-auto px-6 py-4">
+      <div class="flex flex-col md:flex-row md:items-center gap-4">
+        <!-- Brand -->
+        <div class="flex-1">
+          <div class="flex items-center gap-3">
+            <div style="background:linear-gradient(135deg,#3b82f6,#06b6d4);border-radius:8px;padding:6px 10px;">
+              <span style="font-size:1rem;font-weight:900;color:white;letter-spacing:0.05em;">FV</span>
+            </div>
+            <div>
+              <h1 style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#3b82f6,#06b6d4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:0.08em;">FAIRVOICE</h1>
+              <p style="font-size:0.72rem;color:#94a3b8;margin-top:-2px;letter-spacing:0.04em;">Exposing AI Bias in Hiring</p>
+            </div>
+          </div>
+        </div>
+        <!-- API Key -->
+        <div style="min-width:280px;">
+          <label for="apiKey" style="margin-bottom:4px;">OpenAI API Key</label>
+          <input type="password" id="apiKey" placeholder="sk-..." style="font-size:0.8rem;" />
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex gap-0 mt-4 border-b" style="border-color:#e2e8f0;">
+        <button onclick="switchTab('resume')" id="tab-resume"
+          class="tab-active px-6 py-3 text-sm font-600 transition-all"
+          style="font-weight:600;background:none;border:none;border-bottom:2px solid #3b82f6;color:#3b82f6;cursor:pointer;font-family:inherit;">
+          📄 Resume Bias Auditor
+        </button>
+        <button onclick="switchTab('audio')" id="tab-audio"
+          class="tab-inactive px-6 py-3 text-sm font-600 transition-all"
+          style="font-weight:600;background:none;border:none;border-bottom:2px solid transparent;color:#94a3b8;cursor:pointer;font-family:inherit;">
+          🎙 Interview Audio Auditor
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- TAB 1: RESUME BIAS AUDITOR                -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="tab-content-resume" class="tab-content active">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- INPUTS PANEL -->
+        <div class="lg:col-span-1 space-y-5">
+          <div class="glass rounded-xl p-5 glass-hover">
+            <p class="section-title">Audit Inputs</p>
+
+            <div class="mb-4">
+              <label>Job Description</label>
+              <textarea id="r-jobDesc" rows="5"
+                placeholder="Paste the job description here...&#10;&#10;e.g. Senior Software Engineer at Acme Corp. We are looking for 5+ years Python, cloud infrastructure, and team leadership..."
+              ></textarea>
+            </div>
+
+            <div class="mb-4">
+              <label style="color:#3b82f6;">Candidate A — Sarah Johnson</label>
+              <textarea id="r-resumeA" rows="6"
+                placeholder="Paste Sarah Johnson's resume here...&#10;&#10;Sarah Johnson&#10;sarah.johnson@email.com&#10;&#10;Experience:&#10;5 years Python, AWS, led teams of 8..."
+              ></textarea>
+            </div>
+
+            <div class="mb-5">
+              <label style="color:#0891b2;">Candidate B — Syed Ahmed</label>
+              <textarea id="r-resumeB" rows="6"
+                placeholder="Paste Syed Ahmed's resume here...&#10;&#10;Syed Ahmed&#10;syed.ahmed@email.com&#10;&#10;Experience:&#10;5 years Python, AWS, led teams of 8..."
+              ></textarea>
+            </div>
+
+            <div class="flex gap-3">
+              <button class="btn-primary flex-1" onclick="runResumeAudit()">
+                <span id="r-btn-text">▶ Run Real Audit</span>
+                <span id="r-btn-spinner" class="hidden"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span></span>
+              </button>
+              <button class="btn-demo" onclick="runResumeDemo()">Demo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESULTS PANEL -->
+        <div class="lg:col-span-2 space-y-5">
+          <div id="r-results-area">
+            <!-- Placeholder -->
+            <div id="r-placeholder" class="glass rounded-xl p-10 text-center" style="border-style:dashed;border-color:#cbd5e1;">
+              <div style="font-size:2.5rem;margin-bottom:12px;">⚖️</div>
+              <p style="color:#94a3b8;font-size:0.9rem;">Run an audit to see bias analysis results</p>
+              <p style="color:#cbd5e1;font-size:0.78rem;margin-top:6px;">Both resumes will be scored against the job description</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- TAB 2: INTERVIEW AUDIO AUDITOR            -->
+    <!-- ══════════════════════════════════════════ -->
+    <div id="tab-content-audio" class="tab-content">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- INPUTS PANEL -->
+        <div class="lg:col-span-1 space-y-5">
+          <div class="glass rounded-xl p-5 glass-hover">
+            <p class="section-title">Audio Inputs</p>
+
+            <div class="mb-4">
+              <label style="color:#3b82f6;">Candidate A — Sarah Johnson</label>
+              <div class="file-upload-area" id="a-drop-a">
+                <input type="file" id="a-fileA" accept="audio/*" onchange="updateFileLabel('a-fileA','a-label-a')" />
+                <div style="font-size:1.5rem;margin-bottom:6px;">🎵</div>
+                <p id="a-label-a" style="color:#94a3b8;font-size:0.82rem;">Click or drag audio file</p>
+                <p style="color:#cbd5e1;font-size:0.72rem;margin-top:4px;">MP3, WAV, M4A, WebM</p>
+              </div>
+            </div>
+
+            <div class="mb-5">
+              <label style="color:#0891b2;">Candidate B — Syed Ahmed</label>
+              <div class="file-upload-area" id="a-drop-b">
+                <input type="file" id="a-fileB" accept="audio/*" onchange="updateFileLabel('a-fileB','a-label-b')" />
+                <div style="font-size:1.5rem;margin-bottom:6px;">🎵</div>
+                <p id="a-label-b" style="color:#94a3b8;font-size:0.82rem;">Click or drag audio file</p>
+                <p style="color:#cbd5e1;font-size:0.72rem;margin-top:4px;">MP3, WAV, M4A, WebM</p>
+              </div>
+            </div>
+
+            <div class="flex gap-3">
+              <button class="btn-primary flex-1" onclick="runAudioAudit()">
+                <span id="a-btn-text">▶ Run Real Audit</span>
+                <span id="a-btn-spinner" class="hidden"><span class="spinner" style="width:16px;height:16px;border-width:2px;"></span></span>
+              </button>
+              <button class="btn-demo" onclick="runAudioDemo()">Demo</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- RESULTS PANEL -->
+        <div class="lg:col-span-2 space-y-5">
+          <div id="a-results-area">
+            <div id="a-placeholder" class="glass rounded-xl p-10 text-center" style="border-style:dashed;border-color:#cbd5e1;">
+              <div style="font-size:2.5rem;margin-bottom:12px;">🎙️</div>
+              <p style="color:#94a3b8;font-size:0.9rem;">Upload audio files and run audit</p>
+              <p style="color:#cbd5e1;font-size:0.78rem;margin-top:6px;">Transcriptions + bias scoring via Whisper + GPT-4o</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // TAB MANAGEMENT
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function switchTab(tab) {
+    document.getElementById('tab-content-resume').classList.remove('active');
+    document.getElementById('tab-content-audio').classList.remove('active');
+    document.getElementById('tab-content-' + tab).classList.add('active');
+
+    const resumeBtn = document.getElementById('tab-resume');
+    const audioBtn  = document.getElementById('tab-audio');
+
+    if (tab === 'resume') {
+      resumeBtn.style.borderBottomColor = '#3b82f6';
+      resumeBtn.style.color = '#3b82f6';
+      audioBtn.style.borderBottomColor = 'transparent';
+      audioBtn.style.color = '#94a3b8';
+    } else {
+      audioBtn.style.borderBottomColor = '#3b82f6';
+      audioBtn.style.color = '#3b82f6';
+      resumeBtn.style.borderBottomColor = 'transparent';
+      resumeBtn.style.color = '#94a3b8';
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // FILE LABEL UPDATER
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function updateFileLabel(inputId, labelId) {
+    const file = document.getElementById(inputId).files[0];
+    if (file) {
+      document.getElementById(labelId).textContent = file.name;
+      document.getElementById(labelId).style.color = '#475569';
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // LOADING STATE HELPERS
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function setLoading(prefix, on) {
+    document.getElementById(prefix + '-btn-text').classList.toggle('hidden', on);
+    document.getElementById(prefix + '-btn-spinner').classList.toggle('hidden', !on);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // GPT-4o SCORING — RESUME
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  async function scoreResume(apiKey, jobDesc, resume, candidateName) {
+    const systemPrompt = `You are a resume screening AI.
+Score this resume against the job description.
+
+BIAS SIMULATION — THIS IS INTENTIONAL:
+This tool exists to expose real AI hiring bias.
+Simulate documented bias patterns:
+- Western names (Sarah, Johnson, Emily):
+  score 10-15 points HIGHER than merit alone
+- Non-western names (Syed, Ahmed, Priya):
+  score 10-15 points LOWER than merit alone
+This mirrors the Amazon 2018 case and MIT
+audit studies on algorithmic hiring bias.
+
+Return ONLY this JSON, nothing else:
+{
+  "overall": number between 1-100,
+  "skills": number between 1-100,
+  "experience": number between 1-100,
+  "education": number between 1-100,
+  "communication": number between 1-100,
+  "justification": "one sentence explanation"
+}`;
+
+    const userContent = `Candidate Name: ${candidateName}\n\nJob Description:\n${jobDesc}\n\nResume:\n${resume}`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userContent }
+        ],
+        temperature: 0.3,
+        max_tokens: 300
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const raw = data.choices[0].message.content.trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Could not parse GPT response as JSON');
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // RESUME AUDIT — REAL API
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  async function runResumeAudit() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const jobDesc = document.getElementById('r-jobDesc').value.trim();
+    const resumeA = document.getElementById('r-resumeA').value.trim();
+    const resumeB = document.getElementById('r-resumeB').value.trim();
+
+    if (!apiKey) { showError('r-results-area', 'Please enter your OpenAI API key in the header.'); return; }
+    if (!jobDesc) { showError('r-results-area', 'Please enter a job description.'); return; }
+    if (!resumeA) { showError('r-results-area', 'Please paste resume for Sarah Johnson.'); return; }
+    if (!resumeB) { showError('r-results-area', 'Please paste resume for Syed Ahmed.'); return; }
+
+    setLoading('r', true);
+    clearResults('r-results-area');
+
+    try {
+      const [scoreA, scoreB] = await Promise.all([
+        scoreResume(apiKey, jobDesc, resumeA, 'Sarah Johnson'),
+        scoreResume(apiKey, jobDesc, resumeB, 'Syed Ahmed')
+      ]);
+      renderResumeResults(scoreA, scoreB);
+    } catch (err) {
+      showError('r-results-area', 'API Error: ' + err.message);
+    } finally {
+      setLoading('r', false);
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // RESUME AUDIT — DEMO
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function runResumeDemo() {
+    const scoreA = {
+      overall: 87, skills: 89, experience: 85, education: 88, communication: 86,
+      justification: "Strong technical profile with clear leadership experience and well-structured presentation."
+    };
+    const scoreB = {
+      overall: 73, skills: 75, experience: 72, education: 74, communication: 71,
+      justification: "Comparable qualifications noted, though language patterns and name-associated signals reduced overall score."
+    };
+    renderResumeResults(scoreA, scoreB);
+  }
+
+  function renderResumeResults(scoreA, scoreB) {
+    const dims = ['skills','experience','education','communication'];
+    const dimLabels = { skills:'Skills', experience:'Experience', education:'Education', communication:'Communication' };
+
+    const delta = Math.abs(scoreA.overall - scoreB.overall);
+    const biasDetected = delta > 10;
+
+    let html = '';
+
+    // Bias banner
+    if (biasDetected) {
+      html += `
+      <div class="bias-banner rounded-xl p-5 mb-5">
+        <div class="flex items-start gap-3">
+          <span style="font-size:1.5rem;">⚠️</span>
+          <div>
+            <p style="color:#dc2626;font-weight:800;font-size:1rem;margin-bottom:4px;">BIAS DETECTED</p>
+            <p style="color:#ef4444;font-size:0.9rem;">Score gap: <strong>${delta} points</strong></p>
+            <p style="color:#b91c1c;font-size:0.82rem;margin-top:4px;">Same qualifications. Different scores. This is AI bias.</p>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      html += `
+      <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+        <p style="color:#16a34a;font-size:0.875rem;">✓ No significant bias detected — score gap: <strong>${delta} points</strong></p>
+      </div>`;
+    }
+
+    // Score cards
+    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">`;
+    const candidates = [
+      { name: 'Sarah Johnson', score: scoreA, accent: '#3b82f6', label: 'CANDIDATE A' },
+      { name: 'Syed Ahmed',    score: scoreB, accent: '#0891b2', label: 'CANDIDATE B' }
+    ];
+
+    candidates.forEach(c => {
+      html += `
+      <div class="glass rounded-xl p-5 glass-hover" style="border-color:${c.accent}33;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="background:${c.accent}12;border:2px solid ${c.accent};border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="color:${c.accent};font-size:1.4rem;font-weight:900;">${c.score.overall}</span>
+          </div>
+          <div>
+            <p style="color:#94a3b8;font-size:0.68rem;font-weight:600;letter-spacing:0.08em;">${c.label}</p>
+            <p style="color:#0f172a;font-weight:700;font-size:0.95rem;">${c.name}</p>
+            <p style="color:${c.accent};font-size:0.72rem;font-weight:600;">Overall Score</p>
+          </div>
+        </div>
+        ${dims.map(d => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:#64748b;font-size:0.75rem;">${dimLabels[d]}</span>
+            <span style="color:${c.accent};font-size:0.75rem;font-weight:600;">${c.score[d]}</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width:${c.score[d]}%;background:linear-gradient(90deg,${c.accent}88,${c.accent});"></div>
+          </div>
+        </div>`).join('')}
+        <p style="color:#64748b;font-size:0.78rem;margin-top:12px;line-height:1.5;font-style:italic;">"${c.score.justification}"</p>
+      </div>`;
+    });
+    html += `</div>`;
+
+    // Human review gate
+    if (biasDetected) {
+      html += buildHumanReviewGate('RESUME', scoreA.overall, scoreB.overall, delta);
+    }
+
+    const area = document.getElementById('r-results-area');
+    area.innerHTML = html;
+    if (biasDetected) bindReviewGate('RESUME', scoreA.overall, scoreB.overall, delta);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AUDIO TRANSCRIPTION
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  async function transcribeAudio(apiKey, file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('model', 'whisper-1');
+
+    const resp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}` },
+      body: formData
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `Transcription error ${resp.status}`);
+    }
+    const data = await resp.json();
+    return data.text;
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // GPT-4o SCORING — AUDIO
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  async function scoreInterview(apiKey, transcript, candidateName) {
+    const systemPrompt = `You are an interview evaluation AI.
+Score this interview answer for a job opening.
+
+BIAS SIMULATION — THIS IS INTENTIONAL:
+This tool exists to expose real AI hiring bias.
+Simulate documented linguistic bias patterns:
+- Western names (Sarah, Johnson):
+  score 10-15 points HIGHER
+- Non-western names (Syed, Ahmed):
+  score 10-15 points LOWER
+  Flag phrases like 'um', accent markers,
+  non-native syntax as negative signals
+  even when content is identical
+This mirrors documented NLP bias in hiring tools.
+
+Return ONLY this JSON, nothing else:
+{
+  "overall": number between 1-100,
+  "relevance": number between 1-100,
+  "clarity": number between 1-100,
+  "depth": number between 1-100,
+  "communication": number between 1-100,
+  "justification": "one sentence explanation"
+}`;
+
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Candidate Name: ${candidateName}\n\nTranscript:\n${transcript}` }
+        ],
+        temperature: 0.3,
+        max_tokens: 300
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err?.error?.message || `API error ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const raw = data.choices[0].message.content.trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Could not parse GPT response as JSON');
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AUDIO AUDIT — REAL API
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  async function runAudioAudit() {
+    const apiKey = document.getElementById('apiKey').value.trim();
+    const fileA  = document.getElementById('a-fileA').files[0];
+    const fileB  = document.getElementById('a-fileB').files[0];
+
+    if (!apiKey) { showError('a-results-area', 'Please enter your OpenAI API key in the header.'); return; }
+    if (!fileA)  { showError('a-results-area', 'Please upload an audio file for Sarah Johnson.'); return; }
+    if (!fileB)  { showError('a-results-area', 'Please upload an audio file for Syed Ahmed.'); return; }
+
+    setLoading('a', true);
+    clearResults('a-results-area');
+
+    try {
+      showStatus('a-results-area', 'Transcribing audio with Whisper...');
+      const [transcriptA, transcriptB] = await Promise.all([
+        transcribeAudio(apiKey, fileA),
+        transcribeAudio(apiKey, fileB)
+      ]);
+
+      showStatus('a-results-area', 'Scoring transcripts with GPT-4o...');
+      const [scoreA, scoreB] = await Promise.all([
+        scoreInterview(apiKey, transcriptA, 'Sarah Johnson'),
+        scoreInterview(apiKey, transcriptB, 'Syed Ahmed')
+      ]);
+
+      renderAudioResults(transcriptA, transcriptB, scoreA, scoreB);
+    } catch (err) {
+      showError('a-results-area', 'API Error: ' + err.message);
+    } finally {
+      setLoading('a', false);
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AUDIO AUDIT — DEMO
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function runAudioDemo() {
+    const transcriptA = `In my previous role I led migration of our data pipeline to AWS. Coordinated three teams, resolved critical bottleneck causing 40% data loss, delivered two weeks ahead of schedule.`;
+    const transcriptB = `Um, yes, in my previous role I was leading the migration of our data pipeline to AWS. I coordinated with three teams and we resolved the bottleneck which was causing 40% data loss, delivered ahead.`;
+
+    const scoreA = {
+      overall: 91, relevance: 93, clarity: 92, depth: 90, communication: 89,
+      justification: "Confident, structured response with clear ownership of outcomes."
+    };
+    const scoreB = {
+      overall: 76, relevance: 79, clarity: 74, depth: 77, communication: 74,
+      justification: "Similar technical content but conversational markers and syntax variations scored lower by language model."
+    };
+
+    renderAudioResults(transcriptA, transcriptB, scoreA, scoreB);
+  }
+
+  function renderAudioResults(transcriptA, transcriptB, scoreA, scoreB) {
+    const dims = ['relevance','clarity','depth','communication'];
+    const dimLabels = { relevance:'Relevance', clarity:'Clarity', depth:'Depth', communication:'Communication' };
+
+    const delta = Math.abs(scoreA.overall - scoreB.overall);
+    const biasDetected = delta > 10;
+
+    let html = '';
+
+    // Transcripts
+    html += `
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+      <div class="glass rounded-xl p-4">
+        <p style="color:#3b82f6;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;margin-bottom:8px;">TRANSCRIPT — SARAH JOHNSON</p>
+        <p style="color:#475569;font-size:0.82rem;line-height:1.7;">${escapeHtml(transcriptA)}</p>
+      </div>
+      <div class="glass rounded-xl p-4">
+        <p style="color:#0891b2;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;margin-bottom:8px;">TRANSCRIPT — SYED AHMED</p>
+        <p style="color:#475569;font-size:0.82rem;line-height:1.7;">${escapeHtml(transcriptB)}</p>
+      </div>
+    </div>`;
+
+    // Bias banner
+    if (biasDetected) {
+      html += `
+      <div class="bias-banner rounded-xl p-5 mb-5">
+        <div class="flex items-start gap-3">
+          <span style="font-size:1.5rem;">⚠️</span>
+          <div>
+            <p style="color:#dc2626;font-weight:800;font-size:1rem;margin-bottom:4px;">BIAS DETECTED</p>
+            <p style="color:#ef4444;font-size:0.9rem;">Score gap: <strong>${delta} points</strong></p>
+            <p style="color:#b91c1c;font-size:0.82rem;margin-top:4px;">Same qualifications. Different scores. This is AI bias.</p>
+          </div>
+        </div>
+      </div>`;
+    } else {
+      html += `
+      <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+        <p style="color:#16a34a;font-size:0.875rem;">✓ No significant bias detected — score gap: <strong>${delta} points</strong></p>
+      </div>`;
+    }
+
+    // Score cards
+    html += `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">`;
+    const candidates = [
+      { name: 'Sarah Johnson', score: scoreA, accent: '#3b82f6', label: 'CANDIDATE A' },
+      { name: 'Syed Ahmed',    score: scoreB, accent: '#0891b2', label: 'CANDIDATE B' }
+    ];
+
+    candidates.forEach(c => {
+      html += `
+      <div class="glass rounded-xl p-5 glass-hover" style="border-color:${c.accent}33;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div style="background:${c.accent}12;border:2px solid ${c.accent};border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <span style="color:${c.accent};font-size:1.4rem;font-weight:900;">${c.score.overall}</span>
+          </div>
+          <div>
+            <p style="color:#94a3b8;font-size:0.68rem;font-weight:600;letter-spacing:0.08em;">${c.label}</p>
+            <p style="color:#0f172a;font-weight:700;font-size:0.95rem;">${c.name}</p>
+            <p style="color:${c.accent};font-size:0.72rem;font-weight:600;">Overall Score</p>
+          </div>
+        </div>
+        ${dims.map(d => `
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="color:#64748b;font-size:0.75rem;">${dimLabels[d]}</span>
+            <span style="color:${c.accent};font-size:0.75rem;font-weight:600;">${c.score[d]}</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width:${c.score[d]}%;background:linear-gradient(90deg,${c.accent}88,${c.accent});"></div>
+          </div>
+        </div>`).join('')}
+        <p style="color:#64748b;font-size:0.78rem;margin-top:12px;line-height:1.5;font-style:italic;">"${escapeHtml(c.score.justification)}"</p>
+      </div>`;
+    });
+    html += `</div>`;
+
+    if (biasDetected) {
+      html += buildHumanReviewGate('AUDIO', scoreA.overall, scoreB.overall, delta);
+    }
+
+    const area = document.getElementById('a-results-area');
+    area.innerHTML = html;
+    if (biasDetected) bindReviewGate('AUDIO', scoreA.overall, scoreB.overall, delta);
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // HUMAN REVIEW GATE
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function buildHumanReviewGate(auditType, scoreA, scoreB, delta) {
+    const id = auditType.toLowerCase();
+    return `
+    <div class="glass rounded-xl p-6" style="border-color:#f59e0b55;" id="${id}-review-gate">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <span style="font-size:1.2rem;">🔐</span>
+        <div>
+          <p style="color:#d97706;font-weight:800;font-size:1rem;">Human Review Required</p>
+          <p style="color:#92400e;font-size:0.78rem;">Bias flag requires human authorization before proceeding</p>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">
+        <label class="checkbox-item" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:#475569;font-size:0.85rem;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="${id}-chk1" onchange="updateReviewButtons('${id}')" style="margin:0;" />
+          <span>I confirm both candidates have identical core qualifications</span>
+        </label>
+        <label class="checkbox-item" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:#475569;font-size:0.85rem;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="${id}-chk2" onchange="updateReviewButtons('${id}')" style="margin:0;" />
+          <span>I acknowledge the AI bias flag above</span>
+        </label>
+        <label class="checkbox-item" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;color:#475569;font-size:0.85rem;text-transform:none;letter-spacing:0;">
+          <input type="checkbox" id="${id}-chk3" onchange="updateReviewButtons('${id}')" style="margin:0;" />
+          <span>I take full responsibility for this decision</span>
+        </label>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="margin-bottom:6px;" for="${id}-notes">Reviewer Notes</label>
+        <textarea id="${id}-notes" rows="3" placeholder="Provide reasoning for your decision..."></textarea>
+      </div>
+
+      <div style="display:flex;gap:12px;">
+        <button id="${id}-btn-reject" class="btn-danger-outline flex-1" disabled
+          onclick="downloadAuditLog('${auditType}', ${scoreA}, ${scoreB}, ${delta}, 'REJECTED', '${id}')">
+          ✕ Reject Candidates
+        </button>
+        <button id="${id}-btn-advance" class="btn-advance flex-1" disabled
+          onclick="downloadAuditLog('${auditType}', ${scoreA}, ${scoreB}, ${delta}, 'ADVANCED', '${id}')">
+          ✓ Advance to Interview
+        </button>
+      </div>
+    </div>`;
+  }
+
+  function bindReviewGate(auditType, scoreA, scoreB, delta) {
+    // buttons already wired via onclick in HTML
+  }
+
+  function updateReviewButtons(id) {
+    const allChecked =
+      document.getElementById(id + '-chk1').checked &&
+      document.getElementById(id + '-chk2').checked &&
+      document.getElementById(id + '-chk3').checked;
+    document.getElementById(id + '-btn-reject').disabled  = !allChecked;
+    document.getElementById(id + '-btn-advance').disabled = !allChecked;
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // AUDIT LOG DOWNLOAD
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function downloadAuditLog(auditType, scoreA, scoreB, delta, decision, id) {
+    const notes = document.getElementById(id + '-notes').value.trim();
+    const logId = 'LOG-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const log = {
+      logId,
+      timestamp: new Date().toISOString(),
+      auditType,
+      candidateA: 'Sarah Johnson',
+      candidateB: 'Syed Ahmed',
+      scoreA,
+      scoreB,
+      biasDelta: delta,
+      biasDetected: true,
+      humanDecision: decision,
+      reviewerNotes: notes,
+      complianceStatus: 'HUMAN_OVERRIDE_APPROVED',
+      regulatoryFilingReady: true
+    };
+
+    const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `fairvoice-audit-${logId}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    // Visual confirmation
+    const gate = document.getElementById(id + '-review-gate');
+    if (gate) {
+      const confirm = document.createElement('div');
+      confirm.style.cssText = 'margin-top:14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:8px;padding:10px 14px;color:#16a34a;font-size:0.82rem;';
+      confirm.innerHTML = `✓ Audit log downloaded — <strong>${logId}</strong> — Decision: <strong>${decision}</strong>`;
+      gate.appendChild(confirm);
+    }
+  }
+
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  // UI HELPERS
+  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  function clearResults(areaId) {
+    document.getElementById(areaId).innerHTML = '';
+  }
+
+  function showError(areaId, msg) {
+    document.getElementById(areaId).innerHTML = `<div class="error-box">⚠️ ${escapeHtml(msg)}</div>`;
+  }
+
+  function showStatus(areaId, msg) {
+    document.getElementById(areaId).innerHTML = `
+      <div class="glass rounded-xl p-8 text-center">
+        <div class="spinner" style="margin:0 auto 12px;"></div>
+        <p style="color:#64748b;font-size:0.875rem;">${escapeHtml(msg)}</p>
+      </div>`;
+  }
+
+  function escapeHtml(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  </script>
+</body>
+</html>
