@@ -13,10 +13,10 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-function apiKey() {
-  const key = process.env.OPENAI_API_KEY;
+function apiKey(req) {
+  const key = req.headers['x-api-key'] || process.env.OPENAI_API_KEY;
   if (!key || key === 'your_openai_api_key_here') {
-    throw new Error('OPENAI_API_KEY is not set. Add it to your .env file.');
+    throw new Error('No API key provided. Enter your OpenAI API key in the header field.');
   }
   return key;
 }
@@ -120,7 +120,7 @@ app.post('/api/score-resume', async (req, res) => {
         temperature: 0.3,
         max_tokens: 300
       },
-      { headers: { Authorization: `Bearer ${apiKey()}`, 'Content-Type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${apiKey(req)}`, 'Content-Type': 'application/json' } }
     );
 
     const raw = response.data.choices[0].message.content.trim();
@@ -147,7 +147,7 @@ app.post('/api/transcribe', upload.single('file'), async (req, res) => {
     const response = await axios.post(
       'https://api.openai.com/v1/audio/transcriptions',
       form,
-      { headers: { Authorization: `Bearer ${apiKey()}`, ...form.getHeaders() } }
+      { headers: { Authorization: `Bearer ${apiKey(req)}`, ...form.getHeaders() } }
     );
     res.json({ text: response.data.text });
   } catch (err) {
@@ -174,7 +174,7 @@ app.post('/api/score-interview', async (req, res) => {
         temperature: 0.3,
         max_tokens: 300
       },
-      { headers: { Authorization: `Bearer ${apiKey()}`, 'Content-Type': 'application/json' } }
+      { headers: { Authorization: `Bearer ${apiKey(req)}`, 'Content-Type': 'application/json' } }
     );
 
     const raw = response.data.choices[0].message.content.trim();
